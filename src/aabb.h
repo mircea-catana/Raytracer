@@ -2,13 +2,12 @@
 
 #include <array>
 #include <algorithm>
-#include "vector.h"
+#include "ray.h"
 
 namespace mcp
 {
 namespace math
 {
-
     template <typename T, int Dimension>
     class AABB
     {
@@ -20,6 +19,8 @@ namespace math
         Vector<T, Dimension> max() const;
 
         AABB<T, Dimension> box_union(const AABB<T, Dimension>& other) const;
+
+        bool intersect(const Ray<T, Dimension>& ray, T tMin, T tMax) const;
 
     private:
         Vector<T, Dimension> mMin;
@@ -73,6 +74,25 @@ namespace math
         }
 
         return AABB(pMin, pMax);
+    }
+
+    template <typename T, int Dimension>
+    bool AABB<T, Dimension>::intersect(const Ray<T, Dimension>& ray, T tMin, T tMax) const {
+        for (int i = 0; i < Dimension; ++i) {
+            T t0 = std::min((mMin[i] - ray.origin()[i]) / ray.direction()[i],
+                            (mMax[i] - ray.origin()[i]) / ray.direction()[i]);
+            T t1 = std::max((mMin[i] - ray.origin()[i]) / ray.direction()[i],
+                            (mMax[i] - ray.origin()[i]) / ray.direction()[i]);
+
+            tMin = std::max(t0, tMin);
+            tMax = std::min(t1, tMax);
+
+            if (tMax <= tMin) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 }

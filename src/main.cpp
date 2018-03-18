@@ -1,30 +1,23 @@
 #include <iostream>
-#include "aabb.h"
-#include "ray.h"
+
+#include "util.h"
+#include "sphere.h"
 
 using namespace mcp::math;
+using namespace mcp::geometry;
 
 int main()
 {
-    Vector3f a(1.f, 0.f, 0.f);
-    Vector3f b(0.f, 1.f, 0.f);
+    Vector3f c(3.f, 2.f, 3.f);
+    Spheref s(c, 2.f);
 
-    auto c = cross(a, b);
+    auto box = s.aabb();
 
-    std::cout << c.x() << " " << c.y() << " " << c.z() << std::endl;
+    std::cout << box.min().x() << " " << box.min().y() << " " << box.min().z() << " - ";
+    std::cout << box.max().x() << " " << box.max().y() << " " << box.max().z() << std::endl;
 
-    Ray3f r(Vector3f(1.f, 1.f, 0.f), a);
-
-    auto d = r.parametric(0.5f);
-
-    std::cout << d.x() << " " << d.y() << " " << d.z() << std::endl;
-
-    AABB3f b1(a, b);
-    AABB3f b2(a, b + Vector3f(1.f, 1.f, 1.f));
-    auto e = box_union(b1, b2);
-
-    std::cout << e.min().x() << " " << e.min().y() << " " << e.min().z() << " - ";
-    std::cout << e.max().x() << " " << e.max().y() << " " << e.max().z() << std::endl;
+    auto r = mcp::random(2.0, 5.0);
+    std::cout << r << std::endl;
 
     return 0;
 }

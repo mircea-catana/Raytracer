@@ -6,7 +6,6 @@ namespace mcp
 {
 namespace math
 {
-
     template <typename T, int Dimension>
     class Ray
     {
