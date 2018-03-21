@@ -40,7 +40,7 @@ namespace geometry
     {
         Vector<T, 3> pMin = mCenter - Vector<T, 3>(mRadius, mRadius, mRadius);
         Vector<T, 3> pMax = mCenter + Vector<T, 3>(mRadius, mRadius, mRadius);
-        mAABB = AABB<T>(pMin, pMax);
+        mAABB = AABB<T, 3>(pMin, pMax);
     }
 
     template <typename T>
@@ -70,7 +70,7 @@ namespace geometry
 
     template <typename T>
     bool Sphere<T>::intersect(const Ray<T, 3>& ray, T tMin, T tMax, HitInfo<T>& info) const {
-        Vector<T, 3> oc = ray.origin() - center;
+        Vector<T, 3> oc = ray.origin() - mCenter;
 
         T a = dot(ray.direction(), ray.direction());
         T b = dot(oc, ray.direction());
@@ -100,7 +100,7 @@ namespace geometry
 
     template <typename T>
     bool Sphere<T>::intersect_fast(const Ray<T, 3>& ray, T tMin, T tMax, T& t) const {
-        Vector<T, 3> oc = ray.origin() - center;
+        Vector<T, 3> oc = ray.origin() - mCenter;
 
         T a = dot(ray.direction(), ray.direction());
         T b = dot(oc, ray.direction());

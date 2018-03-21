@@ -1,23 +1,47 @@
 #include <iostream>
 
 #include "util.h"
+#include "camera.h"
 #include "sphere.h"
 
 using namespace mcp::math;
 using namespace mcp::geometry;
 
+Spheref gSphere = Spheref(Vector3f(0.f, 0.f, 0.f), 1.f);
+
+void render(const Ray3f& ray, mcp::Pixel8u& pixel)
+{
+    mcp::HitInfo<float> info;
+    if (gSphere.intersect(ray, 0.1f, 100.0f, info)) {
+        pixel.r = 255;
+    }
+}
+
 int main()
 {
-    Vector3f c(3.f, 2.f, 3.f);
-    Spheref s(c, 2.f);
+    Vector3f cameraPosition(0.f, 0.f, -2.f);
+    Vector3f cameraLookAt(0.f, 0.f, 0.f);
+    uint32_t width  = 500;
+    uint32_t height = 500;
+    mcp::Camera camera(cameraPosition, cameraLookAt, 40.f, 0.1f, 100.f, width, height);
 
-    auto box = s.aabb();
+    for (uint32_t i = 0; i < width * height; ++i) {
+        camera.film().pixels().push_back(mcp::Pixel8u(0, 0, 0));
+    }
 
-    std::cout << box.min().x() << " " << box.min().y() << " " << box.min().z() << " - ";
-    std::cout << box.max().x() << " " << box.max().y() << " " << box.max().z() << std::endl;
+    for (uint32_t j = 0; j < height; ++j) {
+        for (uint32_t i = 0; i < width; ++i) {
+            const float u = (static_cast<float>(i) + 0.5f) / static_cast<float>(width);
+            const float v = (static_cast<float>(j) + 0.5f) / static_cast<float>(height);
+            Ray3f cameraRay = camera.getRay(u, v);
 
-    auto r = mcp::random(2.0, 5.0);
-    std::cout << r << std::endl;
+            mcp::Pixel8u& pixel = camera.film().pixel(i, j);
+
+            render(cameraRay, pixel);
+        }
+    }
+
+    camera.film().write(std::string("image.ppm"));
 
     return 0;
 }
