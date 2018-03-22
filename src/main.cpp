@@ -3,23 +3,29 @@
 #include "util.h"
 #include "camera.h"
 #include "sphere.h"
+#include "triangle.h"
 
 using namespace mcp::math;
 using namespace mcp::geometry;
 
-Spheref gSphere = Spheref(Vector3f(0.f, 0.f, 0.f), 1.f);
+Spheref   gSphere   = Spheref(Vector3f(0.f, 0.f, 0.f), 1.f);
+Trianglef gTriangle = Trianglef(Vector3f(-1.f,  1.0f, 0.f),
+                                Vector3f( 1.f,  1.0f, 0.f),
+                                Vector3f( 0.f, -1.0f, 0.f));
 
 void render(const Ray3f& ray, mcp::Pixel8u& pixel)
 {
     mcp::HitInfo<float> info;
-    if (gSphere.intersect(ray, 0.1f, 100.0f, info)) {
-        pixel.r = 255;
+    if (gTriangle.intersect(ray, 0.1f, 100.0f, info)) {
+        pixel.r = 255 * info.u;
+        pixel.g = 255 * info.v;
+        pixel.b = 255 * (1.f - info.u - info.v);
     }
 }
 
 int main()
 {
-    Vector3f cameraPosition(0.f, 0.f, -2.f);
+    Vector3f cameraPosition(0.f, 0.f, -1.f);
     Vector3f cameraLookAt(0.f, 0.f, 0.f);
     uint32_t width  = 500;
     uint32_t height = 500;

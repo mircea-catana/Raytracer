@@ -5,6 +5,8 @@
 
 namespace mcp
 {
+    static const float kEpsilon = 1e-6;
+
     template <typename T>
     inline T clamp(T value, T min, T max) {
         if (value < min) {

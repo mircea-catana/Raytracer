@@ -104,6 +104,14 @@ namespace mcp
 
         Ray3f getRay(float u, float v) const;
 
+        float nearPlane() const {
+            return mNearPlane;
+        }
+
+        float farPlane() const {
+            return mFarPlane;
+        }
+
         Film<Pixel8u>& film() {
             return mFilm;
         }
