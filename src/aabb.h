@@ -19,6 +19,9 @@ namespace math
         Vector<T, Dimension> max() const;
 
         AABB<T, Dimension> box_union(const AABB<T, Dimension>& other) const;
+        AABB<T, Dimension> box_union(const Vector<T, Dimension>& other) const;
+
+        uint32_t maximumExtent() const;
 
         bool intersect(const Ray<T, Dimension>& ray, T tMin, T tMax) const;
 
@@ -35,6 +38,16 @@ namespace math
     template <typename T, int Dimension>
     inline AABB<T, Dimension> box_union(const AABB<T, Dimension>& b1, const AABB<T, Dimension>& b2) {
         return b1.box_union(b2);
+    }
+
+    template <typename T, int Dimension>
+    inline AABB<T, Dimension> box_union(const AABB<T, Dimension>& b, const Vector<T, Dimension>& v) {
+        return b.box_union(v);
+    }
+
+    template <typename T, int Dimension>
+    inline AABB<T, Dimension> box_union(const Vector<T, Dimension>& v, const AABB<T, Dimension>& b) {
+        return b.box_union(v);
     }
 
     template <typename T, int Dimension>
@@ -74,6 +87,39 @@ namespace math
         }
 
         return AABB(pMin, pMax);
+    }
+
+    template <typename T, int Dimension>
+    AABB<T, Dimension> AABB<T, Dimension>::box_union(const Vector<T, Dimension>& other) const {
+        Vector<T, Dimension> pMin;
+        Vector<T, Dimension> pMax;
+
+        for (int i = 0; i < Dimension; ++i) {
+            pMin[i] = std::min(mMin[i], other[i]);
+            pMax[i] = std::max(mMax[i], other[i]);
+        }
+
+        return AABB(pMin, pMax);
+    }
+
+    template <typename T, int Dimension>
+    uint32_t AABB<T, Dimension>::maximumExtent() const {
+        Vector<T, Dimension> diagonal = mMax - mMin;
+
+        for (int i = 0; i < Dimension - 1; ++i) {
+            bool largest = true;
+            for (int j = i + 1; j < Dimension; ++j) {
+                if (diagonal[j] > diagonal[i]) {
+                    largest = false;
+                }
+            }
+
+            if (largest) {
+                return static_cast<uint32_t>(i);
+            }
+        }
+
+        return static_cast<uint32_t>(Dimension - 1);
     }
 
     template <typename T, int Dimension>

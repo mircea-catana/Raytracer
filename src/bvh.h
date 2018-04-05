@@ -23,6 +23,7 @@ namespace accelerator
 
         BVH(const std::vector<std::reference_wrapper<Shape> >& shapes, uint32_t maxShapesPerNode,
             BuildMethod buildMethod);
+        ~BVH();
 
         bool intersect(const Ray3f& ray, float tMin, float tMax, HitInfo& info) const override;
         bool intersect_fast(const Ray3f& ray, float tMin, float tMax, float& t) const override;
@@ -70,6 +71,27 @@ namespace accelerator
             uint32_t      numShapes;
         };
 
+        struct CompareToMid {
+            CompareToMid(uint32_t dimension, float mid) : dimension(dimension), mid(mid) {}
+
+            bool operator() (const BVHShapeInfo& shape) const {
+                return shape.centroid[dimension] < mid;
+            }
+
+            uint32_t dimension;
+            float    mid;
+        };
+
+        struct ComparePoints {
+            ComparePoints(uint32_t dimension) : dimension(dimension) {}
+
+            bool operator() (const BVHShapeInfo& shape1, const BVHShapeInfo& shape2) const {
+                return shape1.centroid[dimension] < shape2.centroid[dimension];
+            }
+
+            uint32_t dimension;
+        };
+
         struct BVHLinearNode {
             AABB3f aabb;
 
@@ -87,7 +109,7 @@ namespace accelerator
 
         BVHBuildNode* recursiveBuild(std::vector<BVHShapeInfo>& buildData, uint32_t start, uint32_t end,
                             uint32_t* totalNodes, std::vector<std::reference_wrapper<Shape> >& orderedShapes);
-        void flattenBVH(BVHBuildNode* node);
+        uint32_t flattenBVH(BVHBuildNode* node, uint32_t* offset);
 
         uint32_t                                    mMaxShapesPerNode;
         BuildMethod                                 mBuildMethod;
@@ -131,16 +153,138 @@ namespace accelerator
             new (&mNodes[i]) BVHLinearNode;
         }
 
-        flattenBVH(root);
+        uint32_t offset = 0;
+        flattenBVH(root, &offset);
+    }
+
+    BVH::~BVH() {
+        memory::freeAligned(mNodes);
     }
 
     BVH::BVHBuildNode* BVH::recursiveBuild(std::vector<BVHShapeInfo>& buildData, uint32_t start, uint32_t end,
                                            uint32_t* totalNodes, std::vector<std::reference_wrapper<Shape> >& orderedShapes) {
-        return nullptr;
+        ++(*totalNodes);
+
+        BVHBuildNode* node = new BVHBuildNode();
+
+        AABB3f bbox;
+        for (uint32_t i = start; i < end; ++i) {
+            bbox = box_union(bbox, buildData[i].aabb);
+        }
+
+        uint32_t numShapes = end - start;
+        if (numShapes == 1) {
+            uint32_t firstShapeOffset = orderedShapes.size();
+
+            for (uint32_t i = start; i < end; ++i) {
+                uint32_t shapeNumber = buildData[i].shapeNumber;
+                orderedShapes.push_back(mShapes[shapeNumber]);
+            }
+
+            node->InitLeaf(firstShapeOffset, numShapes, bbox);
+
+        } else {
+
+            AABB3f centroidBounds;
+            for (uint32_t i = start; i < end; ++i) {
+                centroidBounds = box_union(centroidBounds, buildData[i].centroid);
+            }
+
+            uint32_t dimension = centroidBounds.maximumExtent();
+            uint32_t mid       = (start + end) / 2u;
+
+            if (centroidBounds.min()[dimension] == centroidBounds.max()[dimension]) {
+                if (numShapes <= mMaxShapesPerNode) {
+                    uint32_t firstShapeOffset = orderedShapes.size();
+
+                    for (uint32_t i = start; i < end; ++i) {
+                        uint32_t shapeNumber = buildData[i].shapeNumber;
+                        orderedShapes.push_back(mShapes[shapeNumber]);
+                    }
+
+                    node->InitLeaf(firstShapeOffset, numShapes, bbox);
+                    return node;
+
+                } else {
+                    node->InitInterior(dimension,
+                                       recursiveBuild(buildData, start, mid, totalNodes, orderedShapes),
+                                       recursiveBuild(buildData, mid,   end, totalNodes, orderedShapes));
+                    return node;
+                }
+            }
+
+            /// Partition based on split method
+            switch(mBuildMethod) {
+
+            case eMIDDLE: {
+                float tMid = (centroidBounds.min()[dimension] + centroidBounds.max()[dimension]) * 0.5f;
+                BVHShapeInfo* midPtr = std::partition(&buildData[start],
+                                                      &buildData[end - 1] + 1,
+                                                      CompareToMid(dimension, tMid));
+                mid = midPtr - &buildData[0];
+                if (mid != start && mid != end) {
+                    break;
+                }
+
+                /// In the case there are a lot of primitives with large overlapping bboxes
+                /// we want to fall through and use eEQUAL_COUNT
+            }
+
+            case eEQUAL_COUNT: {
+                mid = (start + end) / 2u;
+                std::nth_element(&buildData[start],
+                                 &buildData[mid],
+                                 &buildData[end - 1] + 1,
+                                 ComparePoints(dimension));
+                break;
+            }
+
+            default:
+            case eSAH: {
+
+                break;
+            }
+            }
+
+            node->InitInterior(dimension,
+                               recursiveBuild(buildData, start, mid, totalNodes, orderedShapes),
+                               recursiveBuild(buildData, mid,   end, totalNodes, orderedShapes));
+        }
+
+        return node;
     }
 
-    void BVH::flattenBVH(BVHBuildNode* node) {
+    uint32_t BVH::flattenBVH(BVHBuildNode* node, uint32_t* offset) {
+        BVHLinearNode* linearNode = &mNodes[*offset];
+        linearNode->aabb = node->aabb;
 
+        uint32_t myOffset = (*offset)++;
+
+        if (node->numShapes > 0) {
+            linearNode->firstShapeOffset = node->firstShapeOffset;
+            linearNode->numShapes        = node->numShapes;
+
+        } else {
+            linearNode->axis      = node->splitAxis;
+            linearNode->numShapes = 0;
+
+            flattenBVH(node->children[0], offset);
+            linearNode->secondChildOffset = flattenBVH(node->children[1], offset);
+        }
+
+        return myOffset;
+    }
+
+    bool BVH::intersect(const Ray3f& ray, float tMin, float tMax, HitInfo& info) const {
+        return false;
+    }
+
+    bool BVH::intersect_fast(const Ray3f& ray, float tMin, float tMax, float& t) const {
+        return false;
+    }
+
+    AABB3f BVH::aabb() const {
+        return math::AABB3f(Vector3f(), Vector3f());
     }
 }
 }

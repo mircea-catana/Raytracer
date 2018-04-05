@@ -8,6 +8,7 @@
 
 using namespace mcp::math;
 using namespace mcp::geometry;
+using namespace mcp::accelerator;
 
 Spheref   gSphere   = Spheref(Vector3f(0.f, 0.f, 0.f), 1.f);
 Trianglef gTriangle = Trianglef(Vector3f(-1.f,  1.0f, 0.f),
@@ -26,6 +27,7 @@ void render(const Ray3f& ray, mcp::Pixel8u& pixel)
 
 int main()
 {
+/*
     Vector3f cameraPosition(0.f, 0.f, -1.f);
     Vector3f cameraLookAt(0.f, 0.f, 0.f);
     uint32_t width  = 500;
@@ -49,6 +51,15 @@ int main()
     }
 
     camera.film().write(std::string("image.ppm"));
+*/
+
+    std::vector<std::reference_wrapper<Shape> > shapes;
+    shapes.reserve(2);
+
+    shapes.push_back(std::reference_wrapper<Shape>(gSphere));
+    shapes.push_back(std::reference_wrapper<Shape>(gTriangle));
+
+    BVH bvh(shapes, 1, BVH::eMIDDLE);
 
     return 0;
 }

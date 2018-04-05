@@ -28,6 +28,8 @@ namespace memory
         amem += MCP_L1_CACHE_LINE_SIZE - (reinterpret_cast<uint32_t>(amem) &
                                           (MCP_L1_CACHE_LINE_SIZE - 1));
 #endif
+        ((void**)amem)[-1] = mem;
+        return amem;
 
 #else
         return memalign(MCP_L1_CACHE_LINE_SIZE, size);
