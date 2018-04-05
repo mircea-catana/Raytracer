@@ -1,8 +1,6 @@
 #pragma once
 
-#include "aabb.h"
-#include "hitinfo.h"
-#include "ray.h"
+#include "shape.h"
 
 namespace mcp
 {
@@ -11,7 +9,7 @@ namespace geometry
     using namespace math;
 
     template <typename T>
-    class Sphere
+    class Sphere : public Shape
     {
     public:
         Sphere();
@@ -19,10 +17,10 @@ namespace geometry
 
         Vector<T, 3> center() const;
         T            radius() const;
-        AABB<T, 3>   aabb()   const;
 
-        bool intersect(const Ray<T, 3>& ray, T tMin, T tMax, HitInfo<T>& info) const;
-        bool intersect_fast(const Ray<T, 3>& ray, T tMin, T tMax, T& t) const;
+        bool intersect(const Ray3f& ray, float tMin, float tMax, HitInfo& info) const override;
+        bool intersect_fast(const Ray3f& ray, float tMin, float tMax, float& t) const override;
+        AABB3f aabb() const override;
 
     private:
         Vector<T, 3> mCenter;
@@ -64,12 +62,12 @@ namespace geometry
     }
 
     template <typename T>
-    AABB<T, 3> Sphere<T>::aabb() const {
+    AABB3f Sphere<T>::aabb() const {
         return mAABB;
     }
 
     template <typename T>
-    bool Sphere<T>::intersect(const Ray<T, 3>& ray, T tMin, T tMax, HitInfo<T>& info) const {
+    bool Sphere<T>::intersect(const Ray3f& ray, float tMin, float tMax, HitInfo& info) const {
         Vector<T, 3> oc = ray.origin() - mCenter;
 
         T a = dot(ray.direction(), ray.direction());
@@ -99,7 +97,7 @@ namespace geometry
     }
 
     template <typename T>
-    bool Sphere<T>::intersect_fast(const Ray<T, 3>& ray, T tMin, T tMax, T& t) const {
+    bool Sphere<T>::intersect_fast(const Ray3f& ray, float tMin, float tMax, float& t) const {
         Vector<T, 3> oc = ray.origin() - mCenter;
 
         T a = dot(ray.direction(), ray.direction());

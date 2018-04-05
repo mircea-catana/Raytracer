@@ -4,12 +4,11 @@
 
 namespace mcp
 {
-    template <typename T>
     struct HitInfo
     {
-        T                  t;
-        math::Vector<T, 3> point;
-        math::Vector<T, 3> normal;
+        float          t;
+        math::Vector3f point;
+        math::Vector3f normal;
 
         float u;
         float v;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ray.h"
+#include "shape.h"
 
 namespace mcp
 {
@@ -9,7 +9,7 @@ namespace geometry
     using namespace math;
 
     template <typename T>
-    class Triangle
+    class Triangle : public Shape
     {
     public:
         Triangle();
@@ -23,10 +23,10 @@ namespace geometry
         Vector<T, 3>& v3();
 
         Vector<T, 3> normal() const;
-        AABB<T, 3>   aabb()   const;
 
-        bool intersect(const Ray<T, 3>& ray, T tMin, T tMax, HitInfo<T>& info) const;
-        bool intersect_fast(const Ray<T, 3>& ray, T tMin, T tMax, T& t) const;
+        bool intersect(const Ray3f& ray, float tMin, float tMax, HitInfo& info) const override;
+        bool intersect_fast(const Ray3f& ray, float tMin, float tMax, float& t) const override;
+        AABB3f aabb() const override;
 
     private:
         Vector<T, 3> mV1;
@@ -58,8 +58,7 @@ namespace geometry
         Vector<T, 3> v1v2 = v2 - v1;
         Vector<T, 3> v1v3 = v3 - v1;
 
-        //mFlatNormal = normalize(cross(v1v2, v1v3));
-        mFlatNormal = cross(v1v2, v1v3);
+        mFlatNormal = normalize(cross(v1v2, v1v3));
 
         Vector<T, 3> pMin(std::min(v1.x(), v2.x()), std::min(v1.y(), v2.y()), std::min(v1.z(), v2.z()));
         pMin.x() = std::min(pMin.x(), v3.x());
@@ -110,12 +109,12 @@ namespace geometry
     }
 
     template <typename T>
-    AABB<T, 3> Triangle<T>::aabb() const {
+    AABB3f Triangle<T>::aabb() const {
         return mAABB;
     }
 
     template <typename T>
-    bool Triangle<T>::intersect(const Ray<T, 3>& ray, T tMin, T tMax, HitInfo<T>& info) const {
+    bool Triangle<T>::intersect(const Ray3f& ray, float tMin, float tMax, HitInfo& info) const {
         if (!intersect_fast(ray, tMin, tMax, info.t)) {
             return false;
         }
@@ -127,16 +126,16 @@ namespace geometry
         Vector<T, 3> e1 = mV3 - mV1;
         Vector<T, 3> e2 = info.point - mV1;
 
-        float d00 = dot(e0, e0);
-        float d01 = dot(e0, e1);
-        float d11 = dot(e1, e1);
-        float d20 = dot(e2, e0);
-        float d21 = dot(e2, e1);
-        float denom = d00 * d11 - d01 * d01;
+        const float d00 = dot(e0, e0);
+        const float d01 = dot(e0, e1);
+        const float d11 = dot(e1, e1);
+        const float d20 = dot(e2, e0);
+        const float d21 = dot(e2, e1);
+        const float denom = d00 * d11 - d01 * d01;
 
-        float v = (d11 * d20 - d01 * d21) / denom;
-        float w = (d00 * d21 - d01 * d20) / denom;
-        float u = static_cast<T>(1) - v - w;
+        const float v = (d11 * d20 - d01 * d21) / denom;
+        const float w = (d00 * d21 - d01 * d20) / denom;
+        const float u = static_cast<T>(1) - v - w;
 
         info.u = u;
         info.v = v;
@@ -145,7 +144,7 @@ namespace geometry
     }
 
     template <typename T>
-    bool Triangle<T>::intersect_fast(const Ray<T, 3>& ray, T tMin, T tMax, T& t) const {
+    bool Triangle<T>::intersect_fast(const Ray3f& ray, float tMin, float tMax, float& t) const {
         Vector<T, 3> v1v2 = mV2 - mV1;
         Vector<T, 3> v1v3 = mV3 - mV1;
 

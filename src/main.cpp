@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "sphere.h"
 #include "triangle.h"
+#include "bvh.h"
 
 using namespace mcp::math;
 using namespace mcp::geometry;
@@ -15,7 +16,7 @@ Trianglef gTriangle = Trianglef(Vector3f(-1.f,  1.0f, 0.f),
 
 void render(const Ray3f& ray, mcp::Pixel8u& pixel)
 {
-    mcp::HitInfo<float> info;
+    mcp::HitInfo info;
     if (gTriangle.intersect(ray, 0.1f, 100.0f, info)) {
         pixel.r = 255 * info.u;
         pixel.g = 255 * info.v;
