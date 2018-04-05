@@ -92,6 +92,31 @@ namespace accelerator
             uint32_t dimension;
         };
 
+        struct CompareToBucket {
+            CompareToBucket(uint32_t split, uint32_t num, uint32_t dimension, const AABB3f& box)
+                : splitBucket(split)
+                , numBuckets(num)
+                , dimension(dimension)
+                , centroidBounds(box)
+            {
+            }
+
+            bool operator() (const BVHShapeInfo& shape) const {
+                uint32_t b = numBuckets * ((shape.centroid[dimension] - centroidBounds.min()[dimension]) /
+                                           (centroidBounds.max()[dimension] - centroidBounds.min()[dimension]));
+                if (b == numBuckets) {
+                    b = numBuckets - 1;
+                }
+
+                return b <= splitBucket;
+            }
+
+            uint32_t splitBucket;
+            uint32_t numBuckets;
+            uint32_t dimension;
+            AABB3f   centroidBounds;
+        };
+
         struct BVHLinearNode {
             AABB3f aabb;
 
@@ -241,6 +266,80 @@ namespace accelerator
 
             default:
             case eSAH: {
+                if (numShapes <= 4) {
+                    mid = (start + end) / 2u;
+                    std::nth_element(&buildData[start],
+                                     &buildData[mid],
+                                     &buildData[end - 1] + 1,
+                                     ComparePoints(dimension));
+                    break;
+                }
+
+                const uint32_t numBuckets = 12;
+
+                struct BucketInfo {
+                    BucketInfo() : count(0u) {}
+
+                    uint32_t count;
+                    AABB3f   bounds;
+                };
+
+                BucketInfo buckets[numBuckets];
+
+                for (uint32_t i = start; i < end; ++i) {
+                    uint32_t b = numBuckets * ((buildData[i].centroid[dimension] - centroidBounds.min()[dimension]) /
+                                               (centroidBounds.max()[dimension] - centroidBounds.min()[dimension]));
+                    if (b == numBuckets) {
+                        b = numBuckets - 1;
+                    }
+
+                    buckets[b].count++;
+                    buckets[b].bounds = box_union(buckets[b].bounds, buildData[i].aabb);
+                }
+
+                float cost[numBuckets - 1];
+                for (uint32_t i = 0; i < numBuckets - 1; ++i) {
+                    AABB3f   b0, b1;
+                    uint32_t c0, c1;
+
+                    for (uint32_t j = 0; j <= i; ++j) {
+                        b0  = box_union(b0, buckets[j].bounds);
+                        c0 += buckets[j].count;
+                    }
+
+                    for (uint32_t j = i + 1; j < numBuckets; ++j) {
+                        b1  = box_union(b1, buckets[j].bounds);
+                        c1 += buckets[j].count;
+                    }
+
+                    cost[i] = 0.125f + (c0 * b0.surfaceArea() + c1 * b1.surfaceArea()) / bbox.surfaceArea();
+                }
+
+                float    minCost      = cost[0];
+                uint32_t minCostSplit = 0;
+                for (uint32_t i = 1; i < numBuckets - 1; ++i) {
+                    if (cost[i] < minCost) {
+                        minCost      = cost[i];
+                        minCostSplit = i;
+                    }
+                }
+
+                if (numShapes > mMaxShapesPerNode || minCost < numShapes) {
+                    BVHShapeInfo* midPtr = std::partition(&buildData[start],
+                                                          &buildData[end - 1] + 1,
+                                                          CompareToBucket(minCostSplit, numBuckets, dimension, centroidBounds));
+                    mid = midPtr - &buildData[0];
+                } else {
+                    uint32_t firstShapeOffset = orderedShapes.size();
+
+                    for (uint32_t i = start; i < end; ++i) {
+                        uint32_t shapeNumber = buildData[i].shapeNumber;
+                        orderedShapes.push_back(mShapes[shapeNumber]);
+                    }
+
+                    node->InitLeaf(firstShapeOffset, numShapes, bbox);
+                    return node;
+                }
 
                 break;
             }

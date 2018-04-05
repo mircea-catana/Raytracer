@@ -22,6 +22,7 @@ namespace math
         AABB<T, Dimension> box_union(const Vector<T, Dimension>& other) const;
 
         uint32_t maximumExtent() const;
+        T        surfaceArea()   const;
 
         bool intersect(const Ray<T, Dimension>& ray, T tMin, T tMax) const;
 
@@ -120,6 +121,20 @@ namespace math
         }
 
         return static_cast<uint32_t>(Dimension - 1);
+    }
+
+    template <typename T, int Dimension>
+    T AABB<T, Dimension>::surfaceArea() const {
+        Vector<T, Dimension> diagonal = mMax - mMin;
+        T sum = static_cast<T>(0);
+
+        for (int i = 0; i < Dimension - 1; ++i) {
+            for (int j = i + 1; j < Dimension; ++j) {
+                sum += diagonal[i] * diagonal[j];
+            }
+        }
+
+        return static_cast<T>(2) * sum;
     }
 
     template <typename T, int Dimension>

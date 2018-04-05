@@ -59,7 +59,7 @@ int main()
     shapes.push_back(std::reference_wrapper<Shape>(gSphere));
     shapes.push_back(std::reference_wrapper<Shape>(gTriangle));
 
-    BVH bvh(shapes, 1, BVH::eMIDDLE);
+    BVH bvh(shapes, 1, BVH::eSAH);
 
     return 0;
 }
