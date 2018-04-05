@@ -10,15 +10,15 @@ using namespace mcp::math;
 using namespace mcp::geometry;
 using namespace mcp::accelerator;
 
-Spheref   gSphere   = Spheref(Vector3f(0.f, 0.f, 0.f), 1.f);
+Spheref   gSphere   = Spheref(Vector3f(0.f, 0.f, -0.3f), 0.8f);
 Trianglef gTriangle = Trianglef(Vector3f(-1.f,  1.0f, 0.f),
                                 Vector3f( 1.f,  1.0f, 0.f),
                                 Vector3f( 0.f, -1.0f, 0.f));
 
-void render(const Ray3f& ray, mcp::Pixel8u& pixel)
+void render(const BVH& bvh, const Ray3f& ray, mcp::Pixel8u& pixel)
 {
     mcp::HitInfo info;
-    if (gTriangle.intersect(ray, 0.1f, 100.0f, info)) {
+    if (bvh.intersect(ray, 0.1f, 100.0f, info)) {
         pixel.r = 255 * info.u;
         pixel.g = 255 * info.v;
         pixel.b = 255 * (1.f - info.u - info.v);
@@ -27,8 +27,15 @@ void render(const Ray3f& ray, mcp::Pixel8u& pixel)
 
 int main()
 {
-/*
-    Vector3f cameraPosition(0.f, 0.f, -1.f);
+    std::vector<std::reference_wrapper<Shape> > shapes;
+    shapes.reserve(2);
+
+    shapes.push_back(std::reference_wrapper<Shape>(gSphere));
+    shapes.push_back(std::reference_wrapper<Shape>(gTriangle));
+
+    BVH bvh(shapes, 1, BVH::eSAH);
+
+    Vector3f cameraPosition(0.f, 0.f, 1.f);
     Vector3f cameraLookAt(0.f, 0.f, 0.f);
     uint32_t width  = 500;
     uint32_t height = 500;
@@ -46,20 +53,11 @@ int main()
 
             mcp::Pixel8u& pixel = camera.film().pixel(i, j);
 
-            render(cameraRay, pixel);
+            render(bvh, cameraRay, pixel);
         }
     }
 
     camera.film().write(std::string("image.ppm"));
-*/
-
-    std::vector<std::reference_wrapper<Shape> > shapes;
-    shapes.reserve(2);
-
-    shapes.push_back(std::reference_wrapper<Shape>(gSphere));
-    shapes.push_back(std::reference_wrapper<Shape>(gTriangle));
-
-    BVH bvh(shapes, 1, BVH::eSAH);
 
     return 0;
 }

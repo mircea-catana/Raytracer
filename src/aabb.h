@@ -26,6 +26,9 @@ namespace math
 
         bool intersect(const Ray<T, Dimension>& ray, T tMin, T tMax) const;
 
+        const Vector<T, Dimension>& operator[] (int i) const;
+        Vector<T, Dimension>& operator[] (int i);
+
     private:
         Vector<T, Dimension> mMin;
         Vector<T, Dimension> mMax;
@@ -155,5 +158,18 @@ namespace math
 
         return true;
     }
+
+    template <typename T, int Dimension>
+    const Vector<T, Dimension>& AABB<T, Dimension>::operator[] (int i) const {
+        assert(i == 0 || i == 1);
+        return (&mMin)[i];
+    }
+
+    template <typename T, int Dimension>
+    Vector<T, Dimension>& AABB<T, Dimension>::operator[] (int i) {
+        assert(i == 0 || i == 1);
+        return (&mMin)[i];
+    }
+
 }
 }

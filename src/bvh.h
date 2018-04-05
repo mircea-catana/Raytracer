@@ -12,6 +12,34 @@ namespace accelerator
 {
     using namespace math;
 
+    static inline bool intersectBox(const AABB3f& bounds, const Ray3f& ray, const Vector3f& invDir,
+                                    const uint32_t dirIsNeg[3], float tMin, float tMax)
+    {
+        float txMin = (bounds[    dirIsNeg[0]].x() - ray.origin().x()) * invDir.x();
+        float txMax = (bounds[1 - dirIsNeg[0]].x() - ray.origin().x()) * invDir.x();
+        float tyMin = (bounds[    dirIsNeg[1]].y() - ray.origin().y()) * invDir.y();
+        float tyMax = (bounds[1 - dirIsNeg[1]].y() - ray.origin().y()) * invDir.y();
+
+        if ((txMin > tyMax) || (tyMin > txMax)) {
+            return false;
+        }
+
+        if (tyMin > txMin) txMin = tyMin;
+        if (tyMax < txMax) txMax = tyMax;
+
+        float tzMin = (bounds[    dirIsNeg[2]].z() - ray.origin().z()) * invDir.z();
+        float tzMax = (bounds[1 - dirIsNeg[2]].z() - ray.origin().z()) * invDir.z();
+
+        if ((txMin > tzMax) || (tzMin > txMax)) {
+            return false;
+        }
+
+        if (tzMin > txMin) txMin = tzMin;
+        if (tzMax < txMax) txMax = tzMax;
+
+        return (txMin < tMax) && (txMax > tMin);
+    }
+
     class BVH : public Aggregate
     {
     public:
@@ -375,7 +403,52 @@ namespace accelerator
     }
 
     bool BVH::intersect(const Ray3f& ray, float tMin, float tMax, HitInfo& info) const {
-        return false;
+        if (!mNodes) {
+            return false;
+        }
+
+        bool hit = false;
+
+        Vector3f invDir(1.f / ray.direction().x(), 1.f / ray.direction().y(), 1.f / ray.direction().z());
+        uint32_t dirIsNeg[3] = { invDir.x() < 0.f, invDir.y() < 0.f, invDir.z() < 0.f };
+
+        uint32_t todoOffset = 0;
+        uint32_t nodeNum    = 0;
+        uint32_t todo[64];
+
+        while (true) {
+            const BVHLinearNode* node = &mNodes[nodeNum];
+
+            if (intersectBox(node->aabb, ray, invDir, dirIsNeg, tMin, tMax)) {
+                if (node->numShapes > 0) {
+
+                    for (uint32_t i = 0; i < node->numShapes; ++i) {
+                        if (mShapes[node->firstShapeOffset + i].get().intersect(ray, tMin, tMax, info)) {
+                            tMax = info.t;
+                            hit = true;
+                        }
+                    }
+
+                    if (todoOffset == 0) break;
+                    nodeNum = todo[--todoOffset];
+
+                } else {
+                    if (dirIsNeg[node->axis]) {
+                        todo[todoOffset++] = nodeNum + 1;
+                        nodeNum = node->secondChildOffset;
+                    } else {
+                        todo[todoOffset++] = node->secondChildOffset;
+                        nodeNum = nodeNum + 1;
+                    }
+                }
+
+            } else {
+                if (todoOffset == 0) break;
+                nodeNum = todo[--todoOffset];
+            }
+        }
+
+        return hit;
     }
 
     bool BVH::intersect_fast(const Ray3f& ray, float tMin, float tMax, float& t) const {
@@ -383,7 +456,7 @@ namespace accelerator
     }
 
     AABB3f BVH::aabb() const {
-        return math::AABB3f(Vector3f(), Vector3f());
+        return mNodes ? mNodes[0].aabb : AABB3f();
     }
 }
 }
