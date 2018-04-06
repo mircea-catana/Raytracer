@@ -190,7 +190,7 @@ namespace accelerator
         std::vector<BVHShapeInfo> buildData;
         buildData.reserve(mShapes.size());
         for (uint32_t i = 0; i < mShapes.size(); ++i) {
-            AABB3f box =  mShapes[i].get().aabb();
+            AABB3f box = mShapes[i].get().aabb();
             buildData.push_back(BVHShapeInfo(i, box));
         }
 
@@ -327,8 +327,10 @@ namespace accelerator
 
                 float cost[numBuckets - 1];
                 for (uint32_t i = 0; i < numBuckets - 1; ++i) {
-                    AABB3f   b0, b1;
-                    uint32_t c0, c1;
+                    AABB3f   b0;
+                    AABB3f   b1;
+                    uint32_t c0 = 0;
+                    uint32_t c1 = 0;
 
                     for (uint32_t j = 0; j <= i; ++j) {
                         b0  = box_union(b0, buckets[j].bounds);

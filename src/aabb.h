@@ -56,8 +56,8 @@ namespace math
 
     template <typename T, int Dimension>
     AABB<T, Dimension>::AABB()
-        : mMin(static_cast<T>(0))
-        , mMax(static_cast<T>(0))
+        : mMin(static_cast<T>(kInfinity))
+        , mMax(static_cast<T>(-kInfinity))
     {
     }
 

@@ -81,6 +81,11 @@ namespace geometry
                 info.t      = t;
                 info.point  = ray.origin() + t * ray.direction();
                 info.normal = normalize(info.point - mCenter);
+
+                Vector3f cs = info.normal * -1.f;
+                info.u = 0.5f + atan2f(cs.z(), cs.x()) / kPI * 2.0f;
+                info.v = 0.5f - asinf(cs.y()) / kPI;
+
                 return true;
             }
 
@@ -89,6 +94,11 @@ namespace geometry
                 info.t      = t;
                 info.point  = ray.origin() + t * ray.direction();
                 info.normal = normalize(info.point - mCenter);
+
+                Vector3f cs = info.normal * -1.f;
+                info.u = 0.5f + atan2f(cs.z(), cs.x()) / kPI * 2.0f;
+                info.v = 0.5f - asinf(cs.y()) / kPI;
+
                 return true;
             }
         }

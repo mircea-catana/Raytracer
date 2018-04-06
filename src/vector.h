@@ -220,7 +220,10 @@ namespace math
     }
 
     template <typename T, int Dimension>
-    Vector<T, Dimension>::Vector(T x) : mData{x} {
+    Vector<T, Dimension>::Vector(T x) {
+        for (int i = 0; i < Dimension; ++i) {
+            mData[i] = x;
+        }
     }
 
     template <typename T, int Dimension>

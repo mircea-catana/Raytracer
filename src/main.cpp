@@ -10,7 +10,7 @@ using namespace mcp::math;
 using namespace mcp::geometry;
 using namespace mcp::accelerator;
 
-Spheref   gSphere   = Spheref(Vector3f(0.f, 0.f, -0.3f), 0.8f);
+Spheref   gSphere   = Spheref(Vector3f(0.f, 0.f, 0.0f), 0.4f);
 Trianglef gTriangle = Trianglef(Vector3f(-1.f,  1.0f, 0.f),
                                 Vector3f( 1.f,  1.0f, 0.f),
                                 Vector3f( 0.f, -1.0f, 0.f));
@@ -18,7 +18,30 @@ Trianglef gTriangle = Trianglef(Vector3f(-1.f,  1.0f, 0.f),
 void render(const BVH& bvh, const Ray3f& ray, mcp::Pixel8u& pixel)
 {
     mcp::HitInfo info;
+
     if (bvh.intersect(ray, 0.1f, 100.0f, info)) {
+        pixel.r = 255 * info.u;
+        pixel.g = 255 * info.v;
+        pixel.b = 255 * (1.f - info.u - info.v);
+    }
+}
+
+void render2(const std::vector<std::reference_wrapper<Shape> >& shapes,
+             const Ray3f& ray, mcp::Pixel8u& pixel)
+{
+    mcp::HitInfo info;
+    info.t = 100.f;
+
+    for (uint32_t i = 0; i < shapes.size(); ++i) {
+        mcp::HitInfo tempInfo;
+        if (shapes[i].get().intersect(ray, 0.1f, 100.f, tempInfo)) {
+            if (tempInfo.t < info.t) {
+                info = tempInfo;
+            }
+        }
+    }
+
+    if (info.t != 100.f) {
         pixel.r = 255 * info.u;
         pixel.g = 255 * info.v;
         pixel.b = 255 * (1.f - info.u - info.v);
@@ -54,6 +77,7 @@ int main()
             mcp::Pixel8u& pixel = camera.film().pixel(i, j);
 
             render(bvh, cameraRay, pixel);
+            //render2(shapes, cameraRay, pixel);
         }
     }
 

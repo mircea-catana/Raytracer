@@ -5,7 +5,9 @@
 
 namespace mcp
 {
-    static const double kEpsilon = 1e-6;
+    static const float kEpsilon  = 1e-6f;
+    static const float kInfinity = FLT_MAX;
+    static const float kPI       = 3.14159265358979323846f;
 
     template <typename T>
     inline T clamp(T value, T min, T max) {
