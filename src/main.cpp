@@ -32,6 +32,27 @@ void render(const BVH& bvh, const Ray3f& ray, mcp::Pixel8u& pixel)
     }
 }
 
+struct ImageRegion
+{
+    uint32_t startX, endX;
+    uint32_t startY, endY;
+};
+
+void render2(const BVH& bvh, mcp::Camera& camera, const ImageRegion& region)
+{
+    for (uint32_t j = region.startY; j < region.endY; ++j) {
+        for (uint32_t i = region.startX; i < region.endX; ++i) {
+            const float u = (static_cast<float>(i) + 0.5f) / static_cast<float>(camera.film().width());
+            const float v = (static_cast<float>(j) + 0.5f) / static_cast<float>(camera.film().height());
+            Ray3f cameraRay = camera.getRay(u, v);
+
+            mcp::Pixel8u& pixel = camera.film().pixel(i, j);
+
+            render(bvh, cameraRay, pixel);
+        }
+    }
+}
+
 int main()
 {
     // Test scene
@@ -51,7 +72,8 @@ int main()
     mcp::Camera camera(cameraPosition, cameraLookAt, 40.f, 0.1f, 100.f, width, height);
 
     // Multithreading, totally useless with simple scenes but hey it works
-    ThreadPool threadPool;
+    const uint32_t numThreads = 7;
+    ThreadPool threadPool(numThreads);
     std::vector<ThreadPool::TaskFuture<void>> futures;
     std::clock_t startTime;
 
@@ -63,30 +85,29 @@ int main()
     // Do pathtracing and time it
     startTime = std::clock();
     std::cout << "Starting Tracing" << std::endl;
-    for (uint32_t j = 0; j < height; ++j) {
-        for (uint32_t i = 0; i < width; ++i) {
-            const float u = (static_cast<float>(i) + 0.5f) / static_cast<float>(width);
-            const float v = (static_cast<float>(j) + 0.5f) / static_cast<float>(height);
-            Ray3f cameraRay = camera.getRay(u, v);
 
-            mcp::Pixel8u& pixel = camera.film().pixel(i, j);
+    const uint32_t regionHeight = camera.film().height() / numThreads;
+    for (uint32_t i = 0u; i < numThreads; ++i) {
+        ImageRegion region;
+        region.startX = 0u;
+        region.endX   = camera.film().width();
+        region.startY = regionHeight * i;
+        region.endY   = regionHeight * (i + 1u);
 
-            //render(bvh, cameraRay, pixel);
-            //render2(shapes, cameraRay, pixel);
-
-            futures.push_back(threadPool.submit(render, std::cref(bvh), std::cref(cameraRay), std::ref(pixel)));
+        if (i == numThreads - 1u) {
+            region.endY = camera.film().height();
         }
+
+        futures.push_back(threadPool.submit(render2, std::cref(bvh), std::ref(camera), region));
+    }
+
+    // TODO: Maybe make use of futures, return pixel values here?
+    for (auto& item : futures) {
+        item.get();
     }
 
     double duration = (std::clock() - startTime) / static_cast<double>(CLOCKS_PER_SEC);
     std::cout << "Finished Tracing with dt: " << duration << " sec" << std::endl;
-
-/*
-    // Maybe make use of futures, return pixel values here?
-    for (auto& item : futures) {
-        item.get();
-    }
-*/
 
     // Dump pixels to file
     camera.film().write(std::string("image.ppm"));
